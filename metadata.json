@@ -1,0 +1,6 @@
+{
+  "name": "SSS",
+  "description": "قارئ مانجا احترافي مستوحى من Kotatsu مع 6 ثيمات نيون داكنة، تخصيص شامل لتوزيع العناصر والأيقونات، مزامنة سحابية، وتحليلات متقدمة لقراءة المستخدم.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

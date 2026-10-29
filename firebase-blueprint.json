@@ -1,0 +1,283 @@
+{
+  "entities": {
+    "UiCustomizationProfile": {
+      "title": "UiCustomizationProfile",
+      "description": "Stores user UI customization settings, neon theme selection, element distribution, icon formatting, and custom visual style presets synced across devices.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the authenticated owner."
+        },
+        "profileName": {
+          "type": "string",
+          "description": "Display name of the customization profile or custom style preset."
+        },
+        "neonThemeId": {
+          "type": "string",
+          "description": "Active neon theme identifier among the 6 neon dark themes.",
+          "enum": [
+            "CYBER_CYAN",
+            "NEON_MAGENTA",
+            "ELECTRIC_VIOLET",
+            "TOXIC_EMERALD",
+            "SOLAR_AMBER",
+            "CRIMSON_LASER"
+          ]
+        },
+        "layoutMode": {
+          "type": "string",
+          "description": "Distribution layout mode for manga cards.",
+          "enum": [
+            "GRID_3",
+            "GRID_2",
+            "COMPACT_LIST",
+            "STAGGERED_CARDS"
+          ]
+        },
+        "iconStyle": {
+          "type": "string",
+          "description": "Visual formatting style for icons across the interface.",
+          "enum": [
+            "NEON_GLOW",
+            "MINIMAL_OUTLINE",
+            "SOLID_CYBER",
+            "DUOTONE_RING"
+          ]
+        },
+        "navigationBarStyle": {
+          "type": "string",
+          "description": "Style and placement of the navigation bar.",
+          "enum": [
+            "FLOATING_PILL",
+            "CLASSIC_DOCK",
+            "COMPACT_RAIL"
+          ]
+        },
+        "homeSectionOrder": {
+          "type": "string",
+          "description": "Order of sections on the home/explore screen.",
+          "enum": [
+            "FEATURED_RECENT_POPULAR",
+            "RECENT_FEATURED_POPULAR",
+            "POPULAR_FEATURED_RECENT"
+          ]
+        },
+        "cardCornerRadiusDp": {
+          "type": "integer",
+          "description": "Corner radius in dp for manga cards (8 to 28)."
+        },
+        "neonGlowIntensity": {
+          "type": "integer",
+          "description": "Intensity percentage of neon glow effects (0 to 100)."
+        },
+        "readerMode": {
+          "type": "string",
+          "description": "Default chapter reader mode.",
+          "enum": [
+            "WEBTOON_VERTICAL",
+            "PAGED_RTL",
+            "PAGED_LTR"
+          ]
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "Name of the device that last synced this profile."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this profile is the currently active synced UI configuration."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "profileName",
+        "neonThemeId",
+        "layoutMode",
+        "iconStyle",
+        "navigationBarStyle",
+        "homeSectionOrder",
+        "cardCornerRadiusDp",
+        "neonGlowIntensity",
+        "readerMode",
+        "deviceName",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MangaBookmark": {
+      "title": "MangaBookmark",
+      "description": "Stores a manga entry in the user's personal Kotatsu/SSS cloud-synced library.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the authenticated owner."
+        },
+        "mangaKey": {
+          "type": "string",
+          "description": "External source or MangaDex identifier."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the manga."
+        },
+        "coverUrl": {
+          "type": "string",
+          "description": "Cover image URL."
+        },
+        "sourceName": {
+          "type": "string",
+          "description": "Manga catalogue source (e.g., MangaDex, Kotatsu Arabic, Asura)."
+        },
+        "author": {
+          "type": "string",
+          "description": "Author or artist name."
+        },
+        "genre": {
+          "type": "string",
+          "description": "Primary genre tag."
+        },
+        "category": {
+          "type": "string",
+          "description": "Library shelf category.",
+          "enum": [
+            "READING",
+            "COMPLETED",
+            "PLAN_TO_READ",
+            "FAVORITES"
+          ]
+        },
+        "lastReadChapter": {
+          "type": "integer",
+          "description": "Last chapter number read by the user."
+        },
+        "totalChapters": {
+          "type": "integer",
+          "description": "Total available chapters."
+        },
+        "rating": {
+          "type": "number",
+          "description": "User rating from 0.0 to 5.0."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when added via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "mangaKey",
+        "title",
+        "coverUrl",
+        "sourceName",
+        "author",
+        "genre",
+        "category",
+        "lastReadChapter",
+        "totalChapters",
+        "rating",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ReadingSessionLog": {
+      "title": "ReadingSessionLog",
+      "description": "Stores usage analytics and reading telemetry for continuous UX optimization.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the authenticated owner."
+        },
+        "mangaTitle": {
+          "type": "string",
+          "description": "Title of the manga read during the session."
+        },
+        "genre": {
+          "type": "string",
+          "description": "Genre of the manga read."
+        },
+        "minutesSpent": {
+          "type": "integer",
+          "description": "Duration of the reading session in minutes (1 to 1440)."
+        },
+        "pagesRead": {
+          "type": "integer",
+          "description": "Number of manga pages/panels read during the session."
+        },
+        "chaptersCompleted": {
+          "type": "integer",
+          "description": "Number of chapters completed in this session."
+        },
+        "neonThemeUsed": {
+          "type": "string",
+          "description": "Neon theme active during the session."
+        },
+        "layoutModeUsed": {
+          "type": "string",
+          "description": "Layout mode active during the session."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when logged via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "mangaTitle",
+        "genre",
+        "minutesSpent",
+        "pagesRead",
+        "chaptersCompleted",
+        "neonThemeUsed",
+        "layoutModeUsed",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/ui_profiles/{profileId}": {
+      "schema": {
+        "$ref": "#/entities/UiCustomizationProfile"
+      },
+      "description": "Cloud-synced custom UI profiles, layout distributions, icon styles, and 6-neon themes per user."
+    },
+    "/users/{userId}/library/{mangaId}": {
+      "schema": {
+        "$ref": "#/entities/MangaBookmark"
+      },
+      "description": "User's personal manga library bookmarks and reading progress."
+    },
+    "/users/{userId}/reading_sessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/ReadingSessionLog"
+      },
+      "description": "User's reading telemetry and usage analytics logs."
+    }
+  }
+}

@@ -1,0 +1,195 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUiCustomizationProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.profileName is string && data.profileName.size() >= 1 && data.profileName.size() <= 80 &&
+             data.neonThemeId is string && data.neonThemeId in [
+               'CYBER_CYAN', 'NEON_MAGENTA', 'ELECTRIC_VIOLET',
+               'TOXIC_EMERALD', 'SOLAR_AMBER', 'CRIMSON_LASER'
+             ] &&
+             data.layoutMode is string && data.layoutMode in [
+               'GRID_3', 'GRID_2', 'COMPACT_LIST', 'STAGGERED_CARDS'
+             ] &&
+             data.iconStyle is string && data.iconStyle in [
+               'NEON_GLOW', 'MINIMAL_OUTLINE', 'SOLID_CYBER', 'DUOTONE_RING'
+             ] &&
+             data.navigationBarStyle is string && data.navigationBarStyle in [
+               'FLOATING_PILL', 'CLASSIC_DOCK', 'COMPACT_RAIL'
+             ] &&
+             data.homeSectionOrder is string && data.homeSectionOrder in [
+               'FEATURED_RECENT_POPULAR', 'RECENT_FEATURED_POPULAR', 'POPULAR_FEATURED_RECENT'
+             ] &&
+             data.cardCornerRadiusDp is int && data.cardCornerRadiusDp >= 4 && data.cardCornerRadiusDp <= 32 &&
+             data.neonGlowIntensity is int && data.neonGlowIntensity >= 0 && data.neonGlowIntensity <= 100 &&
+             data.readerMode is string && data.readerMode in [
+               'WEBTOON_VERTICAL', 'PAGED_RTL', 'PAGED_LTR'
+             ] &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 80 &&
+             data.isActive is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidMangaBookmark(data) {
+      return data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.mangaKey is string && data.mangaKey.size() >= 1 && data.mangaKey.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.coverUrl is string && data.coverUrl.size() <= 1000 &&
+             data.sourceName is string && data.sourceName.size() >= 1 && data.sourceName.size() <= 80 &&
+             data.author is string && data.author.size() <= 120 &&
+             data.genre is string && data.genre.size() <= 80 &&
+             data.category is string && data.category in [
+               'READING', 'COMPLETED', 'PLAN_TO_READ', 'FAVORITES'
+             ] &&
+             data.lastReadChapter is int && data.lastReadChapter >= 0 && data.lastReadChapter <= 10000 &&
+             data.totalChapters is int && data.totalChapters >= 0 && data.totalChapters <= 10000 &&
+             (data.rating is int || data.rating is float) && data.rating >= 0 && data.rating <= 5 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidReadingSessionLog(data) {
+      return data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.mangaTitle is string && data.mangaTitle.size() >= 1 && data.mangaTitle.size() <= 200 &&
+             data.genre is string && data.genre.size() >= 1 && data.genre.size() <= 80 &&
+             data.minutesSpent is int && data.minutesSpent >= 1 && data.minutesSpent <= 1440 &&
+             data.pagesRead is int && data.pagesRead >= 1 && data.pagesRead <= 5000 &&
+             data.chaptersCompleted is int && data.chaptersCompleted >= 0 && data.chaptersCompleted <= 500 &&
+             data.neonThemeUsed is string && data.neonThemeUsed.size() >= 1 && data.neonThemeUsed.size() <= 40 &&
+             data.layoutModeUsed is string && data.layoutModeUsed.size() >= 1 && data.layoutModeUsed.size() <= 40 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId}/ui_profiles/{profileId} {
+      allow get: if isOwner(userId) && isValidId(userId) && isValidId(profileId);
+      allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidId(profileId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'profileName', 'neonThemeId', 'layoutMode',
+                         'iconStyle', 'navigationBarStyle', 'homeSectionOrder',
+                         'cardCornerRadiusDp', 'neonGlowIntensity', 'readerMode',
+                         'deviceName', 'isActive', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'profileName', 'neonThemeId', 'layoutMode',
+                         'iconStyle', 'navigationBarStyle', 'homeSectionOrder',
+                         'cardCornerRadiusDp', 'neonGlowIntensity', 'readerMode',
+                         'deviceName', 'isActive', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUiCustomizationProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidId(profileId) &&
+                       isValidUiCustomizationProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'profileName', 'neonThemeId', 'layoutMode',
+                         'iconStyle', 'navigationBarStyle', 'homeSectionOrder',
+                         'cardCornerRadiusDp', 'neonGlowIntensity', 'readerMode',
+                         'deviceName', 'isActive', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId) && isValidId(profileId);
+    }
+
+    match /users/{userId}/library/{mangaId} {
+      allow get: if isOwner(userId) && isValidId(userId) && isValidId(mangaId);
+      allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidId(mangaId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'mangaKey', 'title', 'coverUrl', 'sourceName',
+                         'author', 'genre', 'category', 'lastReadChapter',
+                         'totalChapters', 'rating', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'mangaKey', 'title', 'coverUrl', 'sourceName',
+                         'author', 'genre', 'category', 'lastReadChapter',
+                         'totalChapters', 'rating', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidMangaBookmark(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidId(mangaId) &&
+                       isValidMangaBookmark(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'mangaKey', 'title', 'coverUrl', 'sourceName',
+                         'author', 'genre', 'category', 'lastReadChapter',
+                         'totalChapters', 'rating', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId) && isValidId(mangaId);
+    }
+
+    match /users/{userId}/reading_sessions/{sessionId} {
+      allow get: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+      allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidId(sessionId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'mangaTitle', 'genre', 'minutesSpent',
+                         'pagesRead', 'chaptersCompleted', 'neonThemeUsed',
+                         'layoutModeUsed', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'mangaTitle', 'genre', 'minutesSpent',
+                         'pagesRead', 'chaptersCompleted', 'neonThemeUsed',
+                         'layoutModeUsed', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidReadingSessionLog(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidId(sessionId) &&
+                       isValidReadingSessionLog(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'mangaTitle', 'genre', 'minutesSpent',
+                         'pagesRead', 'chaptersCompleted', 'neonThemeUsed',
+                         'layoutModeUsed', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+    }
+  }
+}

@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">SSS</string>
+    <string name="sss_subtitle">إصدار Kotatsu الاحترافي بواجهة نيون ومزامنة سحابية</string>
+    <string name="sign_in_google">تسجيل الدخول عبر Google للمزامنة السحابية</string>
+    <string name="sign_out">تسجيل الخروج</string>
+    <string name="nav_explore">الاستكشاف</string>
+    <string name="nav_library">المكتبة</string>
+    <string name="nav_studio">تخصيص SSS</string>
+    <string name="nav_analytics">التحليلات</string>
+    <string name="search_hint">ابحث في MangaDex ومصادر Kotatsu...</string>
+    <string name="sync_now">مزامنة فورية مع السحابة</string>
+    <string name="save_preset">حفظ النمط المخصص</string>
+    <string name="log_session">تسجيل جلسة قراءة</string>
+    <string name="apply_optimization">تطبيق التحسين المقترح</string>
+</resources>
