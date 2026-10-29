@@ -2,21 +2,21 @@ name: SSS Android Build (APK & Bundle)
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "**" ]
     tags: [ "v*" ]
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
     inputs:
       build_variant:
-        description: "نوع النسخة المطلوب بناؤها (debug أو release)"
-        required: true
-        default: "debug"
+        description: "نوع النسخة المطلوب بناؤها (debug أو release أو both)"
+        required: false
+        default: "both"
         type: choice
         options:
+          - both
           - debug
           - release
-          - both
 
 permissions:
   contents: write
@@ -36,30 +36,114 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configure Android SDK & Accept All Licenses
+        run: |
+          SDK_DIR="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          mkdir -p "$SDK_DIR/licenses"
+          printf "\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$SDK_DIR/licenses/android-sdk-license"
+          printf "\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910" > "$SDK_DIR/licenses/android-sdk-preview-license"
+          printf "\n601085b94cd77f0b54ff86406957099ebe79c4d6" > "$SDK_DIR/licenses/android-googletv-license"
+          printf "\nceff83576aac4f7f37cb98fe189e9fb3c49d3b81" > "$SDK_DIR/licenses/android-googlexr-license"
+          printf "\n859f317696f67ef3d7f30a50a5560e7834b43903" > "$SDK_DIR/licenses/android-sdk-arm-dbt-license"
+          printf "\n33b6a2b64607f11b759f320ef9dff4ae5c47d97a" > "$SDK_DIR/licenses/google-gdk-license"
+          printf "\n3a7848b1d7366ca5cfa0be477627644ca73f47e3" > "$SDK_DIR/licenses/microxr-sysimage-license"
+          printf "\ne9acab5b5fbb560a72cfaecce8946896ff6aab9d" > "$SDK_DIR/licenses/mips-android-sysimage-license"
+          if [ -x "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          fi
+          echo "ANDROID_HOME=$SDK_DIR" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_DIR" >> "$GITHUB_ENV"
+          echo "Android SDK configured at $SDK_DIR"
 
-      - name: Setup Gradle (from gradle-wrapper.properties)
+      - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: wrapper
+          gradle-version: "9.3.1"
 
-      - name: Materialize debug.keystore from debug.keystore.base64
+      - name: Materialize Keystore, .env, and Firebase Config
         run: |
-          if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
-            echo "Restored debug.keystore from debug.keystore.base64"
+          if [ ! -f debug.keystore ]; then
+            if [ -f debug.keystore.base64 ]; then
+              base64 -d debug.keystore.base64 > debug.keystore
+              echo "Restored debug.keystore from debug.keystore.base64"
+            else
+              keytool -genkeypair -v \
+                -keystore debug.keystore \
+                -alias androiddebugkey \
+                -keyalg RSA \
+                -keysize 2048 \
+                -validity 10000 \
+                -storepass android \
+                -keypass android \
+                -dname "CN=Android Debug,O=Android,C=US"
+            fi
           fi
 
-      - name: Ensure .env file exists for Secrets Gradle Plugin
-        run: |
-          if [ ! -f .env ] && [ -f .env.example ]; then
-            cp .env.example .env
+          if [ ! -f .env ]; then
+            if [ -f .env.example ]; then
+              cp .env.example .env
+            else
+              touch .env
+            fi
+          fi
+
+          if [ ! -f app/src/main/res/values/firebase_applet_config.xml ]; then
+            mkdir -p app/src/main/res/values
+            cat << 'EOF' > app/src/main/res/values/firebase_applet_config.xml
+          <?xml version="1.0" encoding="utf-8" standalone="no"?>
+          <resources>
+              <string name="firestore_database_id" translatable="false">ai-studio-android-sss-f223c948-1be2-4f51-8e6c-6d24b0dd1e3b</string>
+          </resources>
+          EOF
+          fi
+
+          if [ ! -f app/google-services.json ]; then
+            cat << 'EOF' > app/google-services.json
+          {
+            "project_info": {
+              "project_number": "439079140141",
+              "project_id": "gen-lang-client-0022470411",
+              "storage_bucket": "gen-lang-client-0022470411.firebasestorage.app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:439079140141:android:7ca4e129942f6d57e131a4",
+                  "android_client_info": {
+                    "package_name": "com.aistudio.sssmangareader.kxmpzq"
+                  }
+                },
+                "oauth_client": [
+                  {
+                    "client_id": "439079140141-6i4kkablh1ctnglib013pnipdc3rfq84.apps.googleusercontent.com",
+                    "client_type": 3
+                  }
+                ],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyDummyKeyForGitHubActionsBuildOnly0000"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": [
+                      {
+                        "client_id": "439079140141-6i4kkablh1ctnglib013pnipdc3rfq84.apps.googleusercontent.com",
+                        "client_type": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
           fi
 
       - name: Build Debug APK (SSS-debug.apk)
         if: ${{ github.event.inputs.build_variant != 'release' }}
-        run: gradle :app:assembleDebug --stacktrace
+        run: gradle :app:assembleDebug --no-configuration-cache --stacktrace
 
       - name: Upload SSS Debug APK Artifact
         if: ${{ github.event.inputs.build_variant != 'release' }}
@@ -70,7 +154,7 @@ jobs:
           if-no-files-found: error
 
       - name: Prepare Release Keystore & Build Release APK
-        if: ${{ github.event.inputs.build_variant == 'release' || github.event.inputs.build_variant == 'both' || startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event.inputs.build_variant != 'debug' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -80,7 +164,6 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
             export KEYSTORE_PATH="${GITHUB_WORKSPACE}/my-upload-key.jks"
           else
-            echo "Generating fallback release keystore for CI build..."
             keytool -genkeypair -v \
               -keystore my-upload-key.jks \
               -alias upload \
@@ -94,10 +177,10 @@ jobs:
             export STORE_PASSWORD="androidrelease"
             export KEY_PASSWORD="androidrelease"
           fi
-          gradle :app:assembleRelease --stacktrace
+          gradle :app:assembleRelease --no-configuration-cache --stacktrace
 
       - name: Upload SSS Release APK Artifact
-        if: ${{ github.event.inputs.build_variant == 'release' || github.event.inputs.build_variant == 'both' || startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event.inputs.build_variant != 'debug' }}
         uses: actions/upload-artifact@v4
         with:
           name: SSS-Kotatsu-Neon-Release-APK
