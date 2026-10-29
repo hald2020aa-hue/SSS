@@ -613,6 +613,67 @@ fun StudioCustomizationScreen(
             }
         }
 
+        // 6. GitHub Actions CI/CD Build Status & Instructions
+        item {
+            StudioSectionCard(
+                title = "6. البناء التلقائي عبر GitHub Actions (CI/CD APK)",
+                subtitle = "تم تجهيز ملف سير العمل .github/workflows/android-build.yml لبناء نسخ Debug و Release تلقائياً",
+                icon = Icons.Default.CloudUpload,
+                cardRadius = cardRadius
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(palette.surfaceElevated)
+                        .border(1.dp, palette.primaryNeon.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Workflow: android-build.yml",
+                            fontFamily = OrbitronFontFamily,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = palette.primaryNeon
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(palette.primaryNeon.copy(alpha = 0.2f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "READY FOR GITHUB",
+                                fontFamily = OrbitronFontFamily,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = palette.primaryNeon
+                            )
+                        }
+                    }
+                    Text(
+                        text = "1. اضغط على أيقونة GitHub من القائمة العلوية في AI Studio لرفع المشروع إلى حسابك.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.onBackground
+                    )
+                    Text(
+                        text = "2. سيبدأ GitHub Actions تلقائياً ببناء ملف SSS-Kotatsu-Neon-Debug-APK ونسخة Release.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.onBackground
+                    )
+                    Text(
+                        text = "3. حمّل ملف الـ APK الجاهز مباشرة من قسم Artifacts داخل تبويب Actions في GitHub.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.secondaryNeon
+                    )
+                }
+            }
+        }
+
         // Account Sign-Out
         item {
             OutlinedButton(
