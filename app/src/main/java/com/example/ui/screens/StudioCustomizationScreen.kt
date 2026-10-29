@@ -79,6 +79,7 @@ data class BuiltInStylePreset(
 @Composable
 fun StudioCustomizationScreen(
     uiProfilesState: UiState<List<UiCustomizationProfile>>,
+    isCloudAuthenticated: Boolean = true,
     onSelectNeonTheme: (SssNeonTheme) -> Unit,
     onSelectLayoutMode: (String) -> Unit,
     onSelectIconStyle: (String) -> Unit,
@@ -674,18 +675,33 @@ fun StudioCustomizationScreen(
             }
         }
 
-        // Account Sign-Out
+        // Account Sign-In Later / Sign-Out
         item {
             OutlinedButton(
                 onClick = onSignOut,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("sign_out_button"),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF4D6D))
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (isCloudAuthenticated) Color(0xFFFF4D6D) else palette.primaryNeon
+                )
             ) {
-                Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFFF4D6D))
+                Icon(
+                    imageVector = if (isCloudAuthenticated) Icons.Default.Logout else Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = if (isCloudAuthenticated) Color(0xFFFF4D6D) else palette.primaryNeon
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("تسجيل الخروج من الحساب السحابي", color = Color(0xFFFF4D6D))
+                Text(
+                    text = if (isCloudAuthenticated) {
+                        "تسجيل الخروج من الحساب السحابي"
+                    } else {
+                        "تسجيل الدخول عبر Google الآن لتفعيل المزامنة السحابية"
+                    },
+                    color = if (isCloudAuthenticated) Color(0xFFFF4D6D) else palette.primaryNeon,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

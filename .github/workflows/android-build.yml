@@ -115,13 +115,21 @@ jobs:
                 },
                 "oauth_client": [
                   {
+                    "client_id": "439079140141-abpktmme3b52cbhimrf1neocp4icepi3.apps.googleusercontent.com",
+                    "client_type": 1,
+                    "android_info": {
+                      "package_name": "com.aistudio.sssmangareader.kxmpzq",
+                      "certificate_hash": "ffdfb5a52349c5e7ac5a0cc2325404f474d739de"
+                    }
+                  },
+                  {
                     "client_id": "439079140141-6i4kkablh1ctnglib013pnipdc3rfq84.apps.googleusercontent.com",
                     "client_type": 3
                   }
                 ],
                 "api_key": [
                   {
-                    "current_key": "AIzaSyDummyKeyForGitHubActionsBuildOnly0000"
+                    "current_key": "AIzaSyCCokZ3t7AhUw0evAAhPouy4NJ-Rb5p4Os"
                   }
                 ],
                 "services": {
@@ -164,15 +172,18 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
             export KEYSTORE_PATH="${GITHUB_WORKSPACE}/my-upload-key.jks"
           else
-            keytool -genkeypair -v \
-              -keystore my-upload-key.jks \
-              -alias upload \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass androidrelease \
-              -keypass androidrelease \
-              -dname "CN=SSS Kotatsu, OU=Mobile, O=SSS, L=Riyadh, S=Riyadh, C=SA"
+            # Reuse the registered debug.keystore certificate under alias 'upload' so Google Sign-In works in Release APK too!
+            rm -f my-upload-key.jks
+            keytool -importkeystore \
+              -srckeystore debug.keystore \
+              -srcstorepass android \
+              -srckeypass android \
+              -srcalias androiddebugkey \
+              -destkeystore my-upload-key.jks \
+              -deststorepass androidrelease \
+              -destkeypass androidrelease \
+              -destalias upload \
+              -noprompt
             export KEYSTORE_PATH="${GITHUB_WORKSPACE}/my-upload-key.jks"
             export STORE_PASSWORD="androidrelease"
             export KEY_PASSWORD="androidrelease"

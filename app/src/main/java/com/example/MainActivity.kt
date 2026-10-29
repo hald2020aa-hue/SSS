@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -92,20 +91,24 @@ class MainActivity : ComponentActivity() {
 fun SssRootApp(auth: FirebaseAuth = Firebase.auth) {
     val currentUser by auth.authStateFlow().collectAsStateWithLifecycle(initialValue = auth.currentUser)
     var previewTheme by remember { mutableStateOf(SssNeonTheme.CYBER_CYAN) }
+    var skippedSignInForLater by rememberSaveable { mutableStateOf(false) }
 
     val user = currentUser
-    if (user == null) {
+    if (user == null && !skippedSignInForLater) {
         SssTheme {
             SssAuthScreen(
                 selectedPreviewTheme = previewTheme,
                 onSelectPreviewTheme = { previewTheme = it },
-                onAuthSuccess = {}
+                onAuthSuccess = { skippedSignInForLater = false },
+                onSkipSignInForLater = { skippedSignInForLater = true }
             )
         }
     } else {
         SssAuthenticatedApp(
-            currentUserId = user.uid,
-            initialNeonTheme = previewTheme
+            currentUserId = user?.uid ?: "local_sss_user",
+            isCloudAuthenticated = user != null,
+            initialNeonTheme = previewTheme,
+            onRequestSignIn = { skippedSignInForLater = false }
         )
     }
 }
@@ -113,14 +116,16 @@ fun SssRootApp(auth: FirebaseAuth = Firebase.auth) {
 @Composable
 fun SssAuthenticatedApp(
     currentUserId: String,
-    initialNeonTheme: SssNeonTheme
+    isCloudAuthenticated: Boolean,
+    initialNeonTheme: SssNeonTheme,
+    onRequestSignIn: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val credentialManager = remember { CredentialManager.create(context) }
 
     val viewModel: SssMainViewModel = viewModel(
-        key = currentUserId,
+        key = "${currentUserId}_$isCloudAuthenticated",
         factory = viewModelFactory {
             initializer {
                 val app = checkNotNull(this[APPLICATION_KEY]) {
@@ -132,6 +137,7 @@ fun SssAuthenticatedApp(
                     cloudRepository = SssCloudRepository(db),
                     catalogueRepository = MangaCatalogueRepository(),
                     currentUserId = currentUserId,
+                    isCloudAuthenticated = isCloudAuthenticated,
                     initialNeonTheme = initialNeonTheme
                 )
             }
@@ -289,6 +295,7 @@ fun SssAuthenticatedApp(
                                 "studio" -> {
                                     StudioCustomizationScreen(
                                         uiProfilesState = uiProfilesState,
+                                        isCloudAuthenticated = isCloudAuthenticated,
                                         onSelectNeonTheme = { viewModel.selectNeonTheme(it) },
                                         onSelectLayoutMode = { viewModel.updateLayoutMode(it) },
                                         onSelectIconStyle = { viewModel.updateIconStyle(it) },
@@ -298,16 +305,26 @@ fun SssAuthenticatedApp(
                                         onGlowIntensityChange = { viewModel.updateNeonGlowIntensity(it) },
                                         onReaderModeChange = { viewModel.updateReaderMode(it) },
                                         onSaveCustomPreset = { viewModel.saveCustomPresetToCloud(it) },
-                                        onSyncNow = { viewModel.syncActiveConfigToCloud() },
+                                        onSyncNow = {
+                                            if (isCloudAuthenticated) {
+                                                viewModel.syncActiveConfigToCloud()
+                                            } else {
+                                                onRequestSignIn()
+                                            }
+                                        },
                                         onApplyCloudProfile = { viewModel.applyCloudProfile(it) },
                                         onDeleteCloudProfile = { viewModel.deleteCloudProfile(it) },
                                         onSignOut = {
-                                            signOut(
-                                                context = context,
-                                                credentialManager = credentialManager,
-                                                onSignOutComplete = {},
-                                                scope = scope
-                                            )
+                                            if (isCloudAuthenticated) {
+                                                signOut(
+                                                    context = context,
+                                                    credentialManager = credentialManager,
+                                                    onSignOutComplete = {},
+                                                    scope = scope
+                                                )
+                                            } else {
+                                                onRequestSignIn()
+                                            }
                                         }
                                     )
                                 }

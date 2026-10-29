@@ -44,6 +44,7 @@ class SssMainViewModel(
     private val cloudRepository: SssCloudRepository,
     private val catalogueRepository: MangaCatalogueRepository,
     private val currentUserId: String,
+    private val isCloudAuthenticated: Boolean = true,
     initialNeonTheme: SssNeonTheme = SssNeonTheme.CYBER_CYAN
 ) : ViewModel() {
 
@@ -55,6 +56,87 @@ class SssMainViewModel(
     private val _activeProfileId = MutableStateFlow<String?>(null)
     private val _statusBanner = MutableStateFlow<String?>(null)
     val statusBanner: StateFlow<String?> = _statusBanner.asStateFlow()
+
+    // Local state flows used when user selects "Skip and Sign In Later" (strictly auth-gated: zero Firestore calls when unauthenticated)
+    private val _localProfiles = MutableStateFlow(
+        listOf(
+            UiCustomizationProfile(
+                id = "local_preset_1",
+                userId = currentUserId,
+                profileName = "SSS Cyber Samurai (محلي)",
+                neonThemeId = initialNeonTheme.id,
+                layoutMode = "GRID_3",
+                iconStyle = "NEON_GLOW",
+                navigationBarStyle = "FLOATING_PILL",
+                homeSectionOrder = "FEATURED_RECENT_POPULAR",
+                cardCornerRadiusDp = 16L,
+                neonGlowIntensity = 85L,
+                readerMode = "WEBTOON_VERTICAL",
+                deviceName = "${Build.MANUFACTURER} ${Build.MODEL}".take(40).ifBlank { "Android Device" },
+                isActive = true
+            )
+        )
+    )
+
+    private val _localLibrary = MutableStateFlow(
+        listOf(
+            MangaBookmark(
+                id = "sss_cyber_ronin",
+                userId = currentUserId,
+                mangaKey = "sss_cyber_ronin",
+                title = "SSS-Class Cyber Ronin",
+                coverUrl = "",
+                sourceName = "Kotatsu Arabic",
+                author = "Kenji Takahashi",
+                genre = "Cyberpunk",
+                category = "READING",
+                lastReadChapter = 18L,
+                totalChapters = 142L,
+                rating = 4.9
+            ),
+            MangaBookmark(
+                id = "sss_shadow_sovereign",
+                userId = currentUserId,
+                mangaKey = "sss_shadow_sovereign",
+                title = "Solo Sovereign: Neon Abyss",
+                coverUrl = "",
+                sourceName = "Asura Neon",
+                author = "Chugong & Redice",
+                genre = "Fantasy",
+                category = "FAVORITES",
+                lastReadChapter = 64L,
+                totalChapters = 195L,
+                rating = 4.95
+            )
+        )
+    )
+
+    private val _localSessions = MutableStateFlow(
+        listOf(
+            ReadingSessionLog(
+                id = "session_1",
+                userId = currentUserId,
+                mangaTitle = "SSS-Class Cyber Ronin",
+                genre = "Cyberpunk",
+                minutesSpent = 35L,
+                pagesRead = 92L,
+                chaptersCompleted = 3L,
+                neonThemeUsed = "CYBER_CYAN",
+                layoutModeUsed = "GRID_3"
+            ),
+            ReadingSessionLog(
+                id = "session_2",
+                userId = currentUserId,
+                mangaTitle = "Solo Sovereign: Neon Abyss",
+                genre = "Fantasy",
+                minutesSpent = 48L,
+                pagesRead = 134L,
+                chaptersCompleted = 4L,
+                neonThemeUsed = "NEON_MAGENTA",
+                layoutModeUsed = "GRID_2"
+            )
+        )
+    )
 
     // Explore & Search State
     private val _searchQuery = MutableStateFlow("")
@@ -82,9 +164,13 @@ class SssMainViewModel(
     private val _activeReadingChapter = MutableStateFlow<MangaChapterItem?>(null)
     val activeReadingChapter: StateFlow<MangaChapterItem?> = _activeReadingChapter.asStateFlow()
 
-    // Two-tier Kotlin Flow error handling for Firestore streams
+    // Strict Auth-Gating: Only query Firestore when isCloudAuthenticated == true
     val uiProfilesState: StateFlow<UiState<List<UiCustomizationProfile>>> =
-        cloudRepository.observeUiProfiles(currentUserId)
+        (if (isCloudAuthenticated) {
+            cloudRepository.observeUiProfiles(currentUserId)
+        } else {
+            _localProfiles
+        })
             .map<List<UiCustomizationProfile>, UiState<List<UiCustomizationProfile>>> { list ->
                 val active = list.firstOrNull { it.isActive } ?: list.firstOrNull()
                 if (active != null && _activeProfileId.value == null) {
@@ -104,7 +190,11 @@ class SssMainViewModel(
             )
 
     val libraryState: StateFlow<UiState<List<MangaBookmark>>> =
-        cloudRepository.observeLibrary(currentUserId)
+        (if (isCloudAuthenticated) {
+            cloudRepository.observeLibrary(currentUserId)
+        } else {
+            _localLibrary
+        })
             .map<List<MangaBookmark>, UiState<List<MangaBookmark>>> { UiState.Success(it) }
             .catch { error ->
                 Log.w(TAG, "Error observing library", error)
@@ -117,7 +207,11 @@ class SssMainViewModel(
             )
 
     val readingSessionsState: StateFlow<UiState<List<ReadingSessionLog>>> =
-        cloudRepository.observeReadingSessions(currentUserId)
+        (if (isCloudAuthenticated) {
+            cloudRepository.observeReadingSessions(currentUserId)
+        } else {
+            _localSessions
+        })
             .map<List<ReadingSessionLog>, UiState<List<ReadingSessionLog>>> { UiState.Success(it) }
             .catch { error ->
                 Log.w(TAG, "Error observing reading sessions", error)
@@ -227,6 +321,7 @@ class SssMainViewModel(
         val cfg = _visualConfig.value
         val device = "${Build.MANUFACTURER} ${Build.MODEL}".take(60).ifBlank { "SSS Android" }
         val profile = UiCustomizationProfile(
+            id = "preset_${System.currentTimeMillis()}",
             userId = currentUserId,
             profileName = presetName.ifBlank { "نمط SSS مخصص" },
             neonThemeId = cfg.neonTheme.id,
@@ -240,6 +335,11 @@ class SssMainViewModel(
             deviceName = device,
             isActive = true
         )
+        if (!isCloudAuthenticated) {
+            _localProfiles.value = _localProfiles.value + profile
+            _statusBanner.value = "تم حفظ النمط «${profile.profileName}» محلياً (سجل الدخول لمزامنته سحابياً)"
+            return
+        }
         viewModelScope.launch {
             val result = cloudRepository.saveUiProfile(profile)
             result.onSuccess { id ->
@@ -270,6 +370,11 @@ class SssMainViewModel(
             deviceName = device,
             isActive = true
         )
+        if (!isCloudAuthenticated) {
+            _localProfiles.value = listOf(profile) + _localProfiles.value.filterNot { it.id == existingId }
+            _statusBanner.value = "تم تطبيق $changeLabel (الوضع المحلي)"
+            return
+        }
         viewModelScope.launch {
             val res = cloudRepository.saveUiProfile(profile, docId = existingId)
             res.onSuccess {
@@ -282,10 +387,15 @@ class SssMainViewModel(
     fun applyCloudProfile(profile: UiCustomizationProfile) {
         _activeProfileId.value = profile.id
         applyProfileLocally(profile)
-        _statusBanner.value = "تم تطبيق نمط «${profile.profileName}» المتزامن من ${profile.deviceName}"
+        _statusBanner.value = "تم تطبيق نمط «${profile.profileName}» من ${profile.deviceName}"
     }
 
     fun deleteCloudProfile(profileId: String) {
+        if (!isCloudAuthenticated) {
+            _localProfiles.value = _localProfiles.value.filterNot { it.id == profileId }
+            _statusBanner.value = "تم حذف النمط المخصص"
+            return
+        }
         viewModelScope.launch {
             cloudRepository.deleteUiProfile(profileId).onSuccess {
                 _statusBanner.value = "تم حذف النمط المخصص من السحابة"
@@ -310,6 +420,7 @@ class SssMainViewModel(
 
     fun bookmarkManga(manga: KotatsuMangaItem, category: String = "READING", lastChapter: Int = 1) {
         val bookmark = MangaBookmark(
+            id = manga.id,
             userId = currentUserId,
             mangaKey = manga.id,
             title = manga.title,
@@ -322,6 +433,11 @@ class SssMainViewModel(
             totalChapters = manga.totalChapters.toLong(),
             rating = manga.rating
         )
+        if (!isCloudAuthenticated) {
+            _localLibrary.value = listOf(bookmark) + _localLibrary.value.filterNot { it.id == manga.id }
+            _statusBanner.value = "تمت إضافة «${manga.title}» إلى مكتبتك"
+            return
+        }
         viewModelScope.launch {
             cloudRepository.saveMangaBookmark(bookmark, customId = manga.id).onSuccess {
                 _statusBanner.value = "تمت إضافة «${manga.title}» إلى مكتبتك السحابية"
@@ -330,11 +446,16 @@ class SssMainViewModel(
     }
 
     fun updateBookmarkProgress(bookmark: MangaBookmark, newChapter: Long, newCategory: String = bookmark.category) {
+        val updated = bookmark.copy(
+            lastReadChapter = newChapter.coerceIn(0L, bookmark.totalChapters.coerceAtLeast(1L)),
+            category = newCategory
+        )
+        if (!isCloudAuthenticated) {
+            _localLibrary.value = _localLibrary.value.map { if (it.id == bookmark.id) updated else it }
+            _statusBanner.value = "تم تحديث تقدم «${bookmark.title}» إلى الفصل $newChapter"
+            return
+        }
         viewModelScope.launch {
-            val updated = bookmark.copy(
-                lastReadChapter = newChapter.coerceIn(0L, bookmark.totalChapters.coerceAtLeast(1L)),
-                category = newCategory
-            )
             cloudRepository.saveMangaBookmark(updated, customId = bookmark.id).onSuccess {
                 _statusBanner.value = "تم تحديث تقدم «${bookmark.title}» إلى الفصل $newChapter"
             }
@@ -342,6 +463,11 @@ class SssMainViewModel(
     }
 
     fun removeBookmark(mangaDocId: String) {
+        if (!isCloudAuthenticated) {
+            _localLibrary.value = _localLibrary.value.filterNot { it.id == mangaDocId }
+            _statusBanner.value = "تمت إزالة العمل من المكتبة"
+            return
+        }
         viewModelScope.launch {
             cloudRepository.removeMangaBookmark(mangaDocId).onSuccess {
                 _statusBanner.value = "تمت إزالة العمل من المكتبة"
@@ -355,6 +481,7 @@ class SssMainViewModel(
         bookmarkManga(manga, category = "READING", lastChapter = chapter.number)
         val cfg = _visualConfig.value
         val session = ReadingSessionLog(
+            id = "session_${System.currentTimeMillis()}",
             userId = currentUserId,
             mangaTitle = manga.title,
             genre = manga.genre,
@@ -364,6 +491,11 @@ class SssMainViewModel(
             neonThemeUsed = cfg.neonTheme.id,
             layoutModeUsed = cfg.layoutMode
         )
+        if (!isCloudAuthenticated) {
+            _localSessions.value = _localSessions.value + session
+            _statusBanner.value = "تم تسجيل جلسة قراءة الفصل ${chapter.number} وتحديث التحليلات"
+            return
+        }
         viewModelScope.launch {
             cloudRepository.logReadingSession(session).onSuccess {
                 _statusBanner.value = "تم تسجيل جلسة قراءة الفصل ${chapter.number} وتحديث التحليلات"
@@ -380,6 +512,7 @@ class SssMainViewModel(
     ) {
         val cfg = _visualConfig.value
         val session = ReadingSessionLog(
+            id = "session_${System.currentTimeMillis()}",
             userId = currentUserId,
             mangaTitle = mangaTitle,
             genre = genre,
@@ -389,6 +522,11 @@ class SssMainViewModel(
             neonThemeUsed = cfg.neonTheme.id,
             layoutModeUsed = cfg.layoutMode
         )
+        if (!isCloudAuthenticated) {
+            _localSessions.value = _localSessions.value + session
+            _statusBanner.value = "تم تسجيل بيانات الاستخدام بنجاح"
+            return
+        }
         viewModelScope.launch {
             cloudRepository.logReadingSession(session).onSuccess {
                 _statusBanner.value = "تم تسجيل بيانات الاستخدام بنجاح في السحابة"
